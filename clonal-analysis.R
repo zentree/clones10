@@ -10,6 +10,7 @@ options(stringsAsFactors = FALSE)
 require(lme4)
 require(lattice)
 require(Hmisc) #for upData, describe, fancy summary
+require(plyr)  # for ddply
 
 # deafult working directory and options
 setwd('~/Documents/Research/2012/clones10')
@@ -87,41 +88,25 @@ xyplot(moe ~ new.age|clone, group = tree.core, type = 'l',
 #### And here we start with the analyses ####
 
 
-# Threshold function (how early can we reach 6 GPa?)
-# Oh, the embarrassment! This should be done using something related
-# to apply but I couldn't make it work with multiple argument functions
-# (as finding the threshold). I have to try later
-
-# Empty data-frame for results
-size <- length(levels(silv$tree.core))
-moe.thres <- data.frame(site = character(size), rep = character(size),
-                        clone = character(size), tree.core = character(size),
-                        threshold = numeric(size))
-rec <- 0
-for(co in levels(silv$tree.core)){
-	rec <- rec + 1
-	cdata <- subset(silv, tree.core == co)
-	threshold <- min(cdata$new.age[cdata$moe >= critical])
-	if(threshold > 11) threshold <- 12
-	moe.thres[rec, 1:4] <- with(cdata, c(as.character(site[1]), as.character(rep[1]), 
-	                            as.character(clone[1]), co))
-	moe.thres[rec, 5] <- threshold
+# Threshold function (how early can we reach 6 GPa?) 
+moe.thres <- function(df) {
+  ring <- min(df$new.age[df$moe >= critical])
 }
 
-moe.thres$site <- factor(moe.thres$site)
-moe.thres$rep <- factor(moe.thres$rep)
-moe.thres$clone <- factor(moe.thres$clone)
+threshold <- ddply(silv, .(site, rep, clone, core), moe.thres)
+names(threshold)[5] <- 'ring'
+threshold$ring <- with(threshold, ifelse(ring > 11, 12, ring))
 
 # Description of thresholds. There doesn't seem to be a huge difference
 # for thresholds (too rough a measurement?)
-histogram(~threshold | site, data = moe.thres)
-xtabs(~ clone + site, data = moe.thres)
-summary(threshold ~ site + clone, data = moe.thres)
+histogram(~ring | site, data = threshold)
+xtabs(~ clone + site, data = threshold)
+summary(ring ~ site + clone, data = threshold)
 
-thres.lmer1 <- lmer(threshold ~ site + (1|rep %in% site) + (1|clone), data = moe.thres)
+thres.lmer1 <- lmer(ring ~ site + (1|rep %in% site) + (1|clone), data = threshold)
 summary(thres.lmer1)
 
-thres.lmer2 <- lmer(threshold ~ site + (1|rep %in% site) + (1|clone) + (1|clone:site), data = moe.thres)
+thres.lmer2 <- lmer(ring ~ site + (1|rep %in% site) + (1|clone) + (1|clone:site), data = threshold)
 summary(thres.lmer2)
 
 anova(thres.lmer1, thres.lmer2)
