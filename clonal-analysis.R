@@ -3,13 +3,17 @@
 # School of Forestry
 #
 
+# options
+options(stringsAsFactors = FALSE)
+
 # libraries
+require(lme4)
 require(lattice)
 require(Hmisc) #for upData, describe, fancy summary
 
 # deafult working directory and options
 setwd('~/Documents/Research/2012/clones10')
-options(stringsAsFactors = FALSE)
+critical <- 6 # Quality threshold in GPa
 
 # Reading and sorting out data
 silv <- read.csv('Master.Data.csv', skip = 1, row.names = 1, header= FALSE)
@@ -56,7 +60,7 @@ silv <- subset(silv, !(clone == 272 & rep == 4 & site == 'Waitarere Beach'))
 
 # and know make core into a factor
 silv$core <- factor(silv$core)
-silv$tree.core <- with(silv, site:rep:clone:core)
+silv$tree.core <- with(silv, factor(paste(site, rep, clone, core, sep = ':')))
 
 # Quick look at all trees per site and rep
 xyplot(mfa ~ new.age|site*rep, group = tree.core, type = 'l', data = silv)
@@ -74,9 +78,50 @@ xyplot(dens ~ new.age|clone, group = tree.core, type = 'l',
 xyplot(dens ~ new.age|clone, group = tree.core, type = 'l', 
        data = silv, subset = site == 'Waitarere Beach', main = 'Waitarere Beach')
 
-xyplot(moe ~ age|clone, group = tree, type = 'l', 
+xyplot(moe ~ new.age|clone, group = tree.core, type = 'l', 
        data = silv, subset = site == 'Golden Downs', main = 'Golden Downs')
-xyplot(moe ~ age|clone, group = tree, type = 'l', 
+xyplot(moe ~ new.age|clone, group = tree.core, type = 'l', 
        data = silv, subset = site == 'Waitarere Beach', main = 'Waitarere Beach')
 
-# And here we start with the analyses
+
+#### And here we start with the analyses ####
+
+
+# Threshold function (how early can we reach 6 GPa?)
+# Oh, the embarrassment! This should be done using something related
+# to apply but I couldn't make it work with multiple argument functions
+# (as finding the threshold). I have to try later
+
+# Empty data-frame for results
+size <- length(levels(silv$tree.core))
+moe.thres <- data.frame(site = character(size), rep = character(size),
+                        clone = character(size), tree.core = character(size),
+                        threshold = numeric(size))
+rec <- 0
+for(co in levels(silv$tree.core)){
+	rec <- rec + 1
+	cdata <- subset(silv, tree.core == co)
+	threshold <- min(cdata$new.age[cdata$moe >= critical])
+	if(threshold > 11) threshold <- 12
+	moe.thres[rec, 1:4] <- with(cdata, c(as.character(site[1]), as.character(rep[1]), 
+	                            as.character(clone[1]), co))
+	moe.thres[rec, 5] <- threshold
+}
+
+moe.thres$site <- factor(moe.thres$site)
+moe.thres$rep <- factor(moe.thres$rep)
+moe.thres$clone <- factor(moe.thres$clone)
+
+# Description of thresholds. There doesn't seem to be a huge difference
+# for thresholds (too rough a measurement?)
+histogram(~threshold | site, data = moe.thres)
+xtabs(~ clone + site, data = moe.thres)
+summary(threshold ~ site + clone, data = moe.thres)
+
+thres.lmer1 <- lmer(threshold ~ site + (1|rep %in% site) + (1|clone), data = moe.thres)
+summary(thres.lmer1)
+
+thres.lmer2 <- lmer(threshold ~ site + (1|rep %in% site) + (1|clone) + (1|clone:site), data = moe.thres)
+summary(thres.lmer2)
+
+anova(thres.lmer1, thres.lmer2)
