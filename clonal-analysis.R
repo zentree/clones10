@@ -221,9 +221,10 @@ clone.thr$site <- apply(data.frame(rownames(clone.thr)), 1,
 clone.thr$clone <- apply(data.frame(rownames(clone.thr)), 1, 
                          FUN = function(x) unlist(strsplit(x, ':'))[2])
 
-clone.thr$site <- substr(clone.thr$site, 6, 20)
-clone.thr$clone <- substr(clone.thr$clone, 7, 20)
+clone.thr$site <- factor(substr(clone.thr$site, 6, 20))
+clone.thr$clone <- factor(substr(clone.thr$clone, 7, 20))
 clone.thr <- clone.thr[1:30, ]
+str(clone.thr)
 
 
 # Just in case, these results should add up to zero.
@@ -231,4 +232,15 @@ clone.thr <- clone.thr[1:30, ]
 sum(clone.thr$effect)
 #[1] -2.592239e-12
 
-xyplot(effect[1:15] ~ effect[16:30], data = clone.thr)
+# Plotting across sites
+dotplot(clone ~ effect, groups = site, data = clone.thr, 
+        xlab = 'Genetic value for first 6 GPa ring (lower is better)', 
+        auto.key = TRUE)
+
+xyplot(effect[1:15] ~ effect[16:30], data = clone.thr,
+       xlab = 'GV for first 6 GPa ring - Waitarere Beach',
+       ylab = 'GV for first 6 GPa ring - Golden Downs')
+
+
+# Saving genetic values
+save(clone.thr, file = 'GeneticValues.Rdata')
