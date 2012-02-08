@@ -261,8 +261,6 @@ summary(moe.as4)
 }
 
 
-
-
 # Clonal genetic values. First extract all random effects
 # and then keep only the ones referring to clones (these
 # also keeps the interaction, that well drop).
@@ -270,44 +268,86 @@ summary(moe.as4)
 # It is always tricky to sort out the results from
 # a multivariate evaluation. I should write some functions
 # for that.
-clone.thr <- data.frame(coef(moe.as3, pattern = 'clone'))
+if(drop.comp.80 == TRUE) query.data <- moe.as3 else query.data <- moe.as4
+
+
+clone.thr <- data.frame(coef(query.data, pattern = 'clone'))
 clone.thr$site <- apply(data.frame(rownames(clone.thr)), 1, 
                         FUN = function(x) unlist(strsplit(x, ':'))[1])
 clone.thr$clone <- apply(data.frame(rownames(clone.thr)), 1, 
                          FUN = function(x) unlist(strsplit(x, ':'))[2])
 
+if(drop.comp.80 == TRUE) {
+  clone.thr <- clone.thr[1:30, ] 
+} else {
+  clone.thr <- clone.thr[1:38, ]
+}
+
 clone.thr$site <- factor(substr(clone.thr$site, 6, 20))
 clone.thr$clone <- factor(substr(clone.thr$clone, 7, 20))
 
-if(drop.comp.80 == TRUE) clone.thr <- clone.thr[1:30, ]
+
 
 str(clone.thr)
 
 
 # Just in case, these results should add up to zero.
 # Yes, they do.
-sum(clone.thr$effect)
-#[1] -2.592239e-12
+round(sum(clone.thr$effect), 6)
+#[1] 0
+
 
 # Saving genetic values
 save(clone.thr, file = 'GeneticValues.Rdata')
 
+# Let's add an overall mean, so graphs are more
+# meaningful to audience
+if(drop.comp.80 == TRUE) {
+  intercept <- coef(query.data)$fixed[3]
+} else {
+  intercept <- coef(query.data)$fixed[4]
+}
+
+clone.thr$adj.effect <- clone.thr$effect + intercept
 
 
+# Plotting across sites using ggplot
+# Dotplot
+dp <- ggplot(clone.thr, aes(adj.effect, clone, colour = site)) + geom_point(size = 2) +
+      scale_x_continuous('Genetic value for first ring reaching 7 GPa (lower is better)') +
+      scale_y_discrete('Clone code') + theme_bw() +
+      opts(axis.title.x = theme_text(vjust = 0.2))
 
-# Plotting across sites
+pdf('dotplot-for-clones.pdf', width = 8, height = 5.3)
+dp
+dev.off()
+
 dotplot(clone ~ effect, groups = site, data = clone.thr, 
-        xlab = 'Genetic value for first 7 GPa ring (lower is better)', 
-        auto.key = TRUE)
+        xlab = 'Genetic value for first 7 GPa ring (lower is better)',
+        ylab = 'Clone',
+        auto.key = TRUE,
+        cex = 1)
 
 xyplot(effect[1:15] ~ effect[16:30], data = clone.thr,
        xlab = 'GV for first 7 GPa ring - Waitarere Beach',
        ylab = 'GV for first 7 GPa ring - Golden Downs')
 
 
-# Testing ggplot2 for some of the graphs
-scat <- ggplot(clone.thr, aes(x = effect[16:30], y = effect[1:15], label = clone[1:15]))
-scat + geom_point() + geom_text(vjust = 1.5, hjust = 1) + 
-  scale_x_continuous('Genetic Value for first 7 GPa ring - Waitarere Beach') +
-  scale_y_continuous('Genetic Value for first 7 GPa ring - Golden Downs')
+# Scatterplot
+if(drop.comp.80 == TRUE) {
+  scat <- ggplot(clone.thr, 
+                 aes(x = adj.effect[16:30], y = adj.effect[1:15], label = clone[1:15]))
+} else {
+  scat <- ggplot(clone.thr, 
+                 aes(x = adj.effect[20:38], y = adj.effect[1:19], label = clone[1:19]))
+}
+
+scat <- scat + geom_point(size = 1) + geom_text(size = 2, vjust = 1.5, hjust = 1) + 
+        scale_x_continuous('Genetic Value for first 7 GPa ring - Waitarere Beach') +
+        scale_y_continuous('Genetic Value for first 7 GPa ring - Golden Downs') +
+        theme_bw()
+
+pdf('scatterplot-for-clones.pdf', width = 8, height = 5.3)
+scat
+dev.off()
 
