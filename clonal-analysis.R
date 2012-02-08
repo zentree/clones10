@@ -15,7 +15,7 @@ require(ggplot2)
 #### default working directory and local options ####
 setwd('~/Documents/Research/2012/clones10')
 critical <- 7          # Quality threshold in GPa (I'm now using RPBC's 7)
-drop.comp.80 <- FALSE   # Should we drop compartment 80?
+drop.comp.80 <- TRUE   # Should we drop compartment 80?
 options(stringsAsFactors = FALSE)
 
 
@@ -298,7 +298,7 @@ round(sum(clone.thr$effect), 6)
 
 
 # Saving genetic values
-save(clone.thr, file = 'GeneticValues.Rdata')
+save(clone.thr, file = 'GeneticValues15Clones.Rdata')
 
 # Let's add an overall mean, so graphs are more
 # meaningful to audience
@@ -322,16 +322,6 @@ pdf('dotplot-for-clones.pdf', width = 8, height = 5.3)
 dp
 dev.off()
 
-dotplot(clone ~ effect, groups = site, data = clone.thr, 
-        xlab = 'Genetic value for first 7 GPa ring (lower is better)',
-        ylab = 'Clone',
-        auto.key = TRUE,
-        cex = 1)
-
-xyplot(effect[1:15] ~ effect[16:30], data = clone.thr,
-       xlab = 'GV for first 7 GPa ring - Waitarere Beach',
-       ylab = 'GV for first 7 GPa ring - Golden Downs')
-
 
 # Scatterplot
 if(drop.comp.80 == TRUE) {
@@ -342,10 +332,11 @@ if(drop.comp.80 == TRUE) {
                  aes(x = adj.effect[20:38], y = adj.effect[1:19], label = clone[1:19]))
 }
 
-scat <- scat + geom_point(size = 1) + geom_text(size = 2, vjust = 1.5, hjust = 1) + 
+scat <- scat + geom_point(size = 1) + geom_text(size = 3, vjust = 1.5, hjust = 1) + 
         scale_x_continuous('Genetic Value for first 7 GPa ring - Waitarere Beach') +
         scale_y_continuous('Genetic Value for first 7 GPa ring - Golden Downs') +
-        theme_bw()
+        theme_bw() +
+        opts(axis.title.x = theme_text(vjust = 0.2))
 
 pdf('scatterplot-for-clones.pdf', width = 8, height = 5.3)
 scat
