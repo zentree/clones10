@@ -102,6 +102,11 @@ xyplot(moe ~ new.age|clone, group = tree.core, type = 'l',
 
 #### And here we start with the analyses ####
 
+# 2012-02-09 Added this quick phenotypic analysis for ring 2 MoE
+r2moe <- aggregate(moe ~ site + clone, data = silv[silv$new.age == 2,], FUN = mean, na.rm = TRUE)
+r2moe[order(r2moe$site,-r2moe$moe),]
+
+
 
 # Threshold function (how early can we reach the critical GPa value?) 
 moe.thres <- function(df) {
