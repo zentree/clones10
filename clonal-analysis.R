@@ -106,6 +106,8 @@ xyplot(moe ~ new.age|clone, group = tree.core, type = 'l',
 r2moe <- aggregate(moe ~ site + clone, data = silv[silv$new.age == 2,], FUN = mean, na.rm = TRUE)
 r2moe[order(r2moe$site,-r2moe$moe),]
 
+# 2012-02-13 Added a quick mean tabulation for plot in presentation
+
 
 
 # Threshold function (how early can we reach the critical GPa value?) 
