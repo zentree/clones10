@@ -12,10 +12,14 @@ load('~/Documents/Research/2012/harewood/newmoe-genetic-values.Rdata')
 
 load('GeneticValues15Clones.Rdata')
 
-clone.thr <- merge(clone.thr, moe.gv[, c('TENclone', 'class')], by.x = 'clone', by.y = 'TENclone')
+names(moe.gv)[1] <- 'clones2d'
+clone.thr <- merge(clone.thr, moe.gv[, c('clones2d', 'TENclone', 'class')], 
+                   by.x = 'clone', by.y = 'TENclone')
+clone.thr$cloneAO <- factor(as.character(clone.thr$clones2d), labels = LETTERS[1:15])
+
 clone.thr <- clone.thr[order(clone.thr$site, clone.thr$clone),]
 
-plot.d <- data.frame(clone = clone.thr$clone[1:15],
+plot.d <- data.frame(clone = clone.thr$cloneAO[1:15],
                      gvgold = clone.thr$effect[1:15],
                      gvwait = clone.thr$effect[16:30],
                      class = clone.thr$class[1:15])

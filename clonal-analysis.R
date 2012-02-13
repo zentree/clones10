@@ -99,6 +99,12 @@ xyplot(moe ~ new.age|clone, group = tree.core, type = 'l',
 xyplot(moe ~ new.age|clone, group = tree.core, type = 'l', 
        data = silv, subset = site == 'Waitarere Beach', main = 'Waitarere Beach')
 
+#### Reading code translation 2 ~ 3 digits
+code <- read.csv('code-translation.csv', header = TRUE)
+code$FGclone <- as.character(code$FGclone)
+code$Harewood <- as.character(code$Harewood)
+code$GoldenDowns00 <- as.character(code$GoldenDowns00)
+names(code)[5] <- 'TENclone'
 
 #### And here we start with the analyses ####
 
@@ -108,6 +114,22 @@ r2moe[order(r2moe$site,-r2moe$moe),]
 
 # 2012-02-13 Added a quick mean tabulation for plot in presentation
 
+
+# 2012-02-13 Added a plot for presentation
+silv.incognito <- silv[silv$site == 'Waitarere Beach',]
+silv.incognito <- merge(silv.incognito, code[,c('Harewood', 'TENclone')], 
+                        by.x = 'clone', by.y = 'TENclone')
+silv.incognito$cloneAO <- factor(silv.incognito$Harewood, labels = LETTERS[1:15])
+waip <- ggplot(silv.incognito, aes(new.age, mfa, groups = tree.core))
+waip <- waip + geom_line(color = "#56B4E9") + facet_wrap(~cloneAO) +
+        scale_x_continuous('Age (years)') + scale_y_continuous('MFA (degrees)') +
+        opts(axis.title.x = theme_text(size = 12),
+             axis.text.y = theme_text(size = 10, colour = 'black'),
+             axis.text.x = theme_text(colour = 'black'))
+
+pdf('waitarere-trends.pdf', width = 8, height = 5.3)
+waip
+dev.off()
 
 
 # Threshold function (how early can we reach the critical GPa value?) 
