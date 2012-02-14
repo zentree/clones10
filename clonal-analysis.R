@@ -137,9 +137,30 @@ moe.thres <- function(df) {
   ring <- min(df$new.age[df$moe >= critical])
 }
 
+# Total tree diameter function (sum of ring widths * 2, ignores missing rings)
+dia.max <- function(df) {
+  dia <- sum(df$rwidth)*2
+}
+
+
 threshold <- ddply(silv, .(site, rep, clone, core), moe.thres)
 names(threshold)[5] <- 'ring'
 threshold$ring <- with(threshold, ifelse(ring > 11, 12, ring))
+
+diameters <- ddply(silv, .(site, rep, clone, core), dia.max)
+names(diameters)[5] <- 'dbh'
+
+dp <- ggplot(diameters, aes(clone, dbh))
+
+dp + geom_point() + facet_grid(~site)
+
+# We do have missing first ring sometimes. We'll ignore it
+# for a quick analysis
+summary(silv$rwidth[silv$age == 1] ~ silv$clone[silv$age == 1], FUN = mean)
+
+diam.mns <- ddply(diameters, .(site, rep, clone), function(df) mean(df$dbh))
+names(diam.mns)[4] <- 'dbhmn'
+
 
 # Description of thresholds. There is a site difference
 histogram(~ring | site, data = threshold)
@@ -147,7 +168,8 @@ xtabs(~ clone + site, data = threshold)
 summary(ring ~ site + clone, data = threshold, na.rm = TRUE)
 xyplot(jitter(ring) ~ clone | site*rep, group = core, data = threshold)
 
-
+# Description of diameters
+histogram(~ dbhmn | site, data = diam.mns)
 
 #### Using asreml-R for data analysis ####
 
@@ -238,6 +260,167 @@ summary(moe.as3)
 # H2 = sigma_g^2/(sigma_g^2 + sigma_rep^2 + sigma_e^2) Not using core, because is ~ 0
 #  Golden Downs: 2.201669e-01/(2.201669e-01 + 6.224490e-03 + 7.361216e-01) = 0.23
 #  Waitarere: 4.278220e-01/(4.278220e-01 + 5.329608e-01 + 1.082456e+00) = 0.21
+
+
+
+# Quick and dirty correlation between diameters and threshold
+
+# Site 1
+dbh.as1s1 <- asreml(dbhmn ~ 1, random = ~ rep + clone, 
+                    data = diam.mns, subset = site == 'Golden Downs')
+summary(dbh.as1s1)
+
+# $varcomp
+# gamma    component    std.error  z.ratio constraint
+# rep!rep.var     1.011929e-07 5.549250e-05 1.074390e-05 5.165026   Boundary
+# clone!clone.var 2.047021e-01 1.122552e+02 9.107121e+01 1.232609   Positive
+# R!variance      1.000000e+00 5.483834e+02 1.061724e+02 5.165026   Positive
+# 
+#   > 1.122552e+02/(1.122552e+02 + 5.483834e+02)
+# [1] 0.1699192
+
+dbhgv.s1 <- data.frame(coef(dbh.as1s1, pattern = 'clone'))
+dbhgv.s1$clone = substr(rownames(dbhgv.s1), 7,9)
+
+moe.as1s1 <- asreml(ring ~ 1, random = ~ rep + clone/core, 
+                    data = threshold, subset = site == 'Golden Downs')
+
+summary(moe.as1s1)
+# 
+# $varcomp
+# gamma    component    std.error  z.ratio
+# rep!rep.var          9.337511e-03 6.842824e-03 2.322790e-02 0.294595
+# clone!clone.var      3.055313e-01 2.239031e-01 1.164247e-01 1.923158
+# clone:core!clone.var 1.011929e-07 7.415736e-08 9.302187e-09 7.972035
+# R!variance           1.000000e+00 7.328317e-01 9.192530e-02 7.972035
+# constraint
+# rep!rep.var            Positive
+# clone!clone.var        Positive
+# clone:core!clone.var   Boundary
+# R!variance             Positive
+# 
+# > 2.239031e-01/(2.239031e-01 + 6.842824e-03 + 7.328317e-01)
+# [1] 0.2323664
+
+moegv.s1 <- data.frame(coef(moe.as1s1, pattern = 'clone'))
+moegv.s1$clone <- substr(rownames(moegv.s1), 7,9)
+moegv.s1 <- moegv.s1[1:15,]
+
+gvsite1 <- merge(dbhgv.s1, moegv.s1, by = 'clone')
+names(gvsite1) <- c('clone', 'gvdbh', 'gvmoe')
+qplot(gvdbh, gvmoe, data = gvsite1)
+with(gvsite1, cor.test(gvdbh, gvmoe))
+
+# Pearson's product-moment correlation
+# 
+# data:  gvdbh and gvmoe 
+# t = 0.4166, df = 13, p-value = 0.6838
+# alternative hypothesis: true correlation is not equal to 0 
+# 95 percent confidence interval:
+#  -0.4223158  0.5922201 
+# sample estimates:
+#       cor 
+# 0.1147777 
+
+
+# Site 2
+dbh.as1s2 <- asreml(dbhmn ~ 1, random = ~ rep + clone, 
+                    data = diam.mns, subset = site == 'Waitarere Beach')
+summary(dbh.as1s2)
+
+# $loglik
+# [1] -240.0974
+# 
+# $varcomp
+# gamma    component    std.error   z.ratio constraint
+# rep!rep.var     1.014576e-01 1.501101e+02 2.139468e+02 0.7016235   Positive
+# clone!clone.var 4.733260e-07 7.003026e-04 1.366772e-04 5.1237700   Boundary
+# R!variance      1.000000e+00 1.479536e+03 2.887592e+02 5.1237700   Positive
+
+# H2 ~ NA (clonal variance is zero)
+
+moe.as1s2 <- asreml(ring ~ 1, random = ~ rep + clone/core, 
+                    data = threshold, subset = site == 'Waitarere Beach')
+
+summary(moe.as1s2)
+
+# $loglik
+# [1] -86.10185
+# 
+# $varcomp
+# gamma    component    std.error  z.ratio
+# rep!rep.var          5.453764e-01 5.856674e-01 4.556011e-01 1.285483
+# clone!clone.var      4.134532e-01 4.439981e-01 2.180546e-01 2.036179
+# clone:core!clone.var 1.011929e-07 1.086688e-07 1.470765e-08 7.388590
+# R!variance           1.000000e+00 1.073877e+00 1.453427e-01 7.388590
+# constraint
+# rep!rep.var            Positive
+# clone!clone.var        Positive
+# clone:core!clone.var   Boundary
+# R!variance             Positive
+
+# > 4.439981e-01/(4.439981e-01 + 5.856674e-01 + 1.073877e+00)
+# [1] 0.2110716 H2
+
+dbhgv.s2 <- data.frame(coef(dbh.as1s2, pattern = 'clone'))
+dbhgv.s2$clone = substr(rownames(dbhgv.s2), 7,9)
+
+moegv.s2 <- data.frame(coef(moe.as1s2, pattern = 'clone'))
+moegv.s2$clone <- substr(rownames(moegv.s2), 7,9)
+moegv.s2 <- moegv.s2[1:15,]
+
+gvsite2 <- merge(dbhgv.s2, moegv.s2, by = 'clone')
+names(gvsite2) <- c('clone', 'gvdbh', 'gvmoe')
+qplot(gvdbh, gvmoe, data = gvsite2)
+with(gvsite2, cor.test(gvdbh, gvmoe))
+
+# Pearson's product-moment correlation
+# 
+# data:  gvdbh and gvmoe 
+# t = 1.4754, df = 13, p-value = 0.1639
+# alternative hypothesis: true correlation is not equal to 0 
+# 95 percent confidence interval:
+#  -0.1656922  0.7462117 
+# sample estimates:
+#       cor 
+# 0.3787152 
+
+
+
+
+# Second model: equivalent to two univariate analyses 
+# at site level, allowing for different rep, clone and residual
+# variances.
+dbh.as2 <- asreml(dbhmn ~ site, random = ~ diag(site):rep + diag(site):clone,
+                  rcov = ~ at(site):units, data = diam.mns)
+summary(dbh.as2)
+
+# $loglik
+# [1] -491.5424
+# 
+# $varcomp
+# gamma    component std.error
+# site:rep!site.Golden Downs.var      1.379432e-04 1.379432e-04        NA
+# site:rep!site.Waitarere Beach.var   1.501146e+02 1.501146e+02 213.97691
+# site:clone!site.Golden Downs.var    1.122552e+02 1.122552e+02  91.07125
+# site:clone!site.Waitarere Beach.var 6.589371e-04 6.589371e-04        NA
+# site_Golden Downs!variance          5.483834e+02 5.483834e+02 106.17245
+# site_Waitarere Beach!variance       1.479533e+03 1.479533e+03 288.75586
+# z.ratio constraint
+# site:rep!site.Golden Downs.var             NA   Boundary
+# site:rep!site.Waitarere Beach.var   0.7015458   Positive
+# site:clone!site.Golden Downs.var    1.2326085   Positive
+# site:clone!site.Waitarere Beach.var        NA   Boundary
+# site_Golden Downs!variance          5.1650256   Positive
+
+# Third-model: full multivariate analysis
+# There is no data to estimate rep or residual correlations, because we
+# have two separate sites. However, we can estimate the correlation between
+# clones
+dbh.as3 <- asreml(dbhmn ~ site, random = ~ diag(site):rep + corgh(site):clone,
+                  rcov = ~ at(site):units, 
+                  data = diam.mns)
+summary(dbh.as3)                  
 
 }
 
