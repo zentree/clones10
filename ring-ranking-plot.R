@@ -30,11 +30,13 @@ plot.d$gvmean <- plot.d$gvmean + 8
 # Color-blind-friendly palette
 # http://wiki.stdout.org/rcookbook/Graphs/Colors%20(ggplot2)/
 cbfPalette <- scale_colour_manual(values=c("#D55E00", "#000000", "#56B4E9"))
+priPalette <- scale_colour_manual(values=c('red', 'gold4', 'blue'))
+
 
 ring.plot <- ggplot(plot.d, aes(x = 1, y = gvmean, colour = class, label = clone)) 
-ring.plot <- ring.plot + geom_text(size = 3) + 
+ring.plot <- ring.plot + geom_text(size = 3.5) + 
              scale_y_reverse('First ring to reach 7 GPa threshold', angle = 90) +
-             scale_x_continuous('') + cbfPalette +
+             scale_x_continuous('') + priPalette +
              opts(axis.title.x = theme_text(size = 12),
              axis.text.y = theme_text(size = 10, colour = 'black'),
              axis.text.x = theme_text(colour = 'white'),

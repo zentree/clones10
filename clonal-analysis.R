@@ -74,6 +74,11 @@ if(drop.comp.80 == TRUE) {
   silv$clone <- silv$clone[drop = TRUE]
 }
 
+# The following line produces a 'clean' file for Michael Hayes
+write.csv(silv, file = 'clonal-data-for-Hayes.csv', col.names = TRUE, quote = FALSE, row.names = FALSE)
+
+
+
 # and know make core into a factor
 silv$core <- factor(silv$core)
 silv$tree.core <- with(silv, factor(paste(site, rep, clone, core, sep = ':')))
