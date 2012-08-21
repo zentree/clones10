@@ -88,10 +88,10 @@ xtabs(~  core + clone + rep + site, data = silv)
 
 weighted.dens <- function(df){
   n <- length(df$rwidth)
-  prev.radius <- c(0, df$rwidth[1:(n - 1)])
-  cat(n, length(prev.radius), '\n')
-  weight <- pi * (df$rwidth^2 - prev.radius^2)
-  weighted.density <- (weight*df$dens)/sum(weight)
+  cum.radius <- cumsum(df$rwidth)
+  prev.radius <- c(0, cum.radius[1:(n - 1)])
+  weight <- pi * (cum.radius^2 - prev.radius^2)
+  return(sum(weight*df$dens)/sum(weight))
 }
 
 weighdens <- ddply(silv, .(site, rep, clone, core), weighted.dens, .drop = TRUE)
