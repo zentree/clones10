@@ -96,3 +96,6 @@ weighted.dens <- function(df){
 
 weighdens <- ddply(silv, .(site, rep, clone, core), weighted.dens, .drop = TRUE)
 weighdens <- ddply(silv, .(tree.core), weighted.dens)
+
+write.csv(weighdens, '~/Dropbox/research/2012/forgen-density-per-core.csv', 
+          quote = FALSE, row.names = FALSE)
