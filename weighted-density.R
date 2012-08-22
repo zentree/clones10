@@ -95,7 +95,114 @@ weighted.dens <- function(df){
 }
 
 weighdens <- ddply(silv, .(site, rep, clone, core), weighted.dens, .drop = TRUE)
-weighdens <- ddply(silv, .(tree.core), weighted.dens)
 
 write.csv(weighdens, '~/Dropbox/research/2012/forgen-density-per-core.csv', 
           quote = FALSE, row.names = FALSE)
+
+names(weighdens)[5] <- 'wdens'
+
+
+# Simple tree means
+tree.den.means <- ddply(weighdens, .(site, rep, clone), function(df) mean(df$wdens), .drop = TRUE)
+tree.den.means
+names(tree.den.means)[4] <- 'wdens'
+
+
+
+
+# ASReml analysis
+# First model: univariate with common rep, clone, core and 
+# residual variances across sites
+wden.as1 <- asreml(wdens ~ site, random = ~ rep %in% site + clone + core %in% clone, 
+                   data = weighdens)
+summary(wden.as1)
+# $call
+# asreml(fixed = wdens ~ site, random = ~rep %in% site + clone + 
+#   core %in% clone, data = weighdens)
+# 
+# $loglik
+# [1] -971.7942
+# 
+# $nedf
+# [1] 272
+# 
+# $sigma
+# [1] 19.18688
+# 
+# $varcomp
+# gamma   component std.error     z.ratio constraint
+# rep:site!rep.var     0.0985530461  36.2809612  25.34827  1.43129958   Positive
+# clone!clone.var      1.2707362576 467.8042406 185.02157  2.52837671   Positive
+# clone:core!clone.var 0.0005332254   0.1962996  19.10362  0.01027552   Positive
+# R!variance           1.0000000000 368.1363759  34.89964 10.54843051   Positive
+
+# Second model: equivalent to two univariate analyses 
+# at site level, allowing for different rep, clone, core and residual
+# variances.
+wden.as2 <- asreml(wdens ~ site, random = ~ diag(site):rep + diag(site):clone + 
+                   diag(site):core %in% clone, rcov = ~ at(site):units, 
+                   data = weighdens)
+summary(wden.as2)
+# $call
+# asreml(fixed = wdens ~ site, random = ~diag(site):rep + diag(site):clone + 
+#   diag(site):core %in% clone, rcov = ~at(site):units, data = weighdens)
+# 
+# $loglik
+# [1] -976.6759
+# 
+# $nedf
+# [1] 272
+# 
+# $sigma
+# [1] 1
+# 
+# $varcomp
+# gamma    component std.error   z.ratio constraint
+# site:rep!site.Golden Downs.var           3.977233e+01 3.977233e+01  39.83252 0.9984890   Positive
+# site:rep!site.Waitarere Beach.var        4.971817e+01 4.971817e+01  43.42615 1.1448903   Positive
+# site:clone!site.Golden Downs.var         5.646406e+02 5.646406e+02 236.75349 2.3849304   Positive
+# site:clone!site.Waitarere Beach.var      3.732754e+02 3.732754e+02 152.53599 2.4471299   Positive
+# site:clone:core!site.Golden Downs.var    2.122704e+01 2.122704e+01  55.12762 0.3850528   Positive
+# site:clone:core!site.Waitarere Beach.var 4.350783e-05 4.350783e-05        NA        NA   Boundary
+# site_Golden Downs!variance               4.566106e+02 4.566106e+02  64.67653 7.0599119   Positive
+# site_Waitarere Beach!variance            2.392417e+02 2.392417e+02  32.42754 7.3777319   Positive
+
+
+# Third-model: full multivariate analysis
+# There is no data to estimate rep or residual correlations, because we
+# have two separate sites. However, we can estimate the correlation between
+# clones
+wden.as3 <- asreml(wdens ~ site, random = ~ diag(site):rep + corgh(site):clone + 
+                  diag(site):core %in% clone, rcov = ~ at(site):units, 
+                  data = weighdens)
+summary(wden.as3)                  
+# $call
+# asreml(fixed = wdens ~ site, random = ~diag(site):rep + corgh(site):clone + 
+#   diag(site):core %in% clone, rcov = ~at(site):units, data = weighdens)
+# 
+# $loglik
+# [1] -962.7753
+# 
+# $nedf
+# [1] 272
+# 
+# $sigma
+# [1] 1
+# 
+# $varcomp
+# gamma    component std.error   z.ratio constraint
+# site:rep!site.Golden Downs.var                         3.106230e+01 3.106230e+01  33.68226 0.9222154   Positive
+# site:rep!site.Waitarere Beach.var                      4.125628e+01 4.125628e+01  36.72439 1.1234026   Positive
+# site:clone!site.Waitarere Beach:!site.Golden Downs.cor 9.990000e-01 9.990000e-01        NA        NA   Boundary
+# site:clone!site.Golden Downs                           5.820398e+02 5.820398e+02 239.27583 2.4325058   Positive
+# site:clone!site.Waitarere Beach                        3.609671e+02 3.609671e+02 147.80540 2.4421777   Positive
+# site:clone:core!site.Golden Downs.var                  5.252370e-05 5.252370e-05        NA        NA   Boundary
+# site:clone:core!site.Waitarere Beach.var               4.350783e-05 4.350783e-05        NA        NA   Boundary
+# site_Golden Downs!variance                             4.678842e+02 4.678842e+02  57.83802 8.0895607   Positive
+# site_Waitarere Beach!variance                          2.398936e+02 2.398936e+02  32.00942 7.4944703   Positive
+
+# H2 Golden Downs: > 582/(582 + 31 + 468)
+# [1] 0.5383904
+# 
+# H2 Waitarere Beach: > 361/(361 + 41 + 240)
+# [1] 0.5623053
